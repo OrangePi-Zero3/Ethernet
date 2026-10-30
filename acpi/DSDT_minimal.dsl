@@ -1,0 +1,228 @@
+DefinitionBlock ("", "DSDT", 2, "ALWINR", "H616    ", 0x00000616)
+{
+    Scope (_SB)
+    {
+        Device (CPU0)
+        {
+            Name (_HID, "ACPI0007")
+            Name (_UID, 0x00)
+            Method (_STA, 0, NotSerialized)
+            {
+                Return (0x0F)
+            }
+        }
+
+        Device (CPU1)
+        {
+            Name (_HID, "ACPI0007")
+            Name (_UID, 0x01)
+            Method (_STA, 0, NotSerialized)
+            {
+                Return (0x0F)
+            }
+        }
+
+        Device (CPU2)
+        {
+            Name (_HID, "ACPI0007" /* Processor Device */)
+            Name (_UID, 0x02)
+            Method (_STA, 0, NotSerialized)
+            {
+                Return (0x0F)
+            }
+        }
+
+        Device (CPU3)
+        {
+            Name (_HID, "ACPI0007")
+            Name (_UID, 0x03)
+            Method (_STA, 0, NotSerialized)
+            {
+                Return (0x0F)
+            }
+        }
+
+        Device (EHC1)
+        {
+            Name (_HID, EisaId ("PNP0D20"))
+            Name (_UID, 0x01)
+            Name (_CCA, Zero)
+            Method (_STA, 0, NotSerialized)
+            {
+                Return (0x0F)
+            }
+            Name (_CRS, ResourceTemplate ()
+            {
+                Memory32Fixed (ReadWrite, 0x05200000, 0x00000100)
+                Interrupt (ResourceConsumer, Level, ActiveHigh, Exclusive) { 60 }
+            })
+        }
+
+        Device (EHC2)
+        {
+            Name (_HID, EisaId ("PNP0D20"))
+            Name (_UID, 0x02)
+            Name (_CCA, Zero)
+            Method (_STA, 0, NotSerialized)
+            {
+                Return (0x0F)
+            }
+            Name (_CRS, ResourceTemplate ()
+            {
+                Memory32Fixed (ReadWrite, 0x05310000, 0x00000100)
+                Interrupt (ResourceConsumer, Level, ActiveHigh, Exclusive) { 62 }
+            })
+        }
+
+        Device (EHC3)
+        {
+            Name (_HID, EisaId ("PNP0D20"))
+            Name (_UID, 0x03)
+            Name (_CCA, Zero)
+            Method (_STA, 0, NotSerialized)
+            {
+                Return (0x0F)
+            }
+            Name (_CRS, ResourceTemplate ()
+            {
+                Memory32Fixed (ReadWrite, 0x05311000, 0x00000100)
+                Interrupt (ResourceConsumer, Level, ActiveHigh, Exclusive) { 64 }
+            })
+        }
+
+        // never got to bring this up lmao
+        Device (SDC0)
+        {
+            Name (_HID, "AWMC0001")
+            Name (_UID, 0x00)
+            Name (_CCA, Zero)
+            Method (_STA, 0, NotSerialized)
+            {
+                Return (0x0F)
+            }
+            Name (_CRS, ResourceTemplate ()
+            {
+                Memory32Fixed (ReadWrite, 0x04020000, 0x00001000)
+                Interrupt (ResourceConsumer, Level, ActiveHigh, Exclusive) { 67 }
+            })
+        }
+
+        // ------------------------------------------------------------------
+        // EMAC0 (Gigabit Ethernet) - Orange Pi Zero3 (Allwinner H616/H618)
+        //
+        // Windows has no CCU / pinctrl / syscon driver for this SoC, and
+        // EmacDxe asserts the MAC reset and gates the MAC bus clock at
+        // ExitBootServices. The bring-up EmacDxe does in EmacDxeEntry
+        // (reset/clock, pin mux, syscon) is therefore done here, in the
+        // power resource, each time the device is moved to D0. The Windows
+        // driver only has to program the MAC and the PHY.
+        //
+        // Where every constant comes from (see docs/DESIGN.md):
+        //   CCU 0x03001000 + 0x97C  EMAC_BGR: bit0 = gate, bit16 = reset release
+        //                           (ClockDefinitions.h CLK/RST_BUS_EMAC0)
+        //   SYS_CFG 0x03000030      EMAC0_CLK_REG (EmacDxe.h EMAC_SYSCON)
+        //   PIO bank I base         0x0300B000 + 8 * 0x24 = 0x0300B120 (GpioDxe.h)
+        //   PI0..PI16 except PI6    mux 2, drive level 3 (EmacConfigurePins)
+        // ------------------------------------------------------------------
+        PowerResource (EPWR, 0x00, 0x0000)
+        {
+            OperationRegion (CCUB, SystemMemory, 0x0300197C, 0x04)
+            Field (CCUB, DWordAcc, NoLock, Preserve)
+            {
+                EGAT,   1,          // bit 0  : EMAC0 bus clock gate
+                EGT1,   1,          // bit 1  : EMAC1 gate (not touched)
+                ,       14,         // bits 2-15
+                ERST,   1,          // bit 16 : EMAC0 reset, 1 = released
+                ERS1,   1,          // bit 17 : EMAC1 reset (not touched)
+                ,       14
+            }
+
+            // EMAC0_CLK_REG in SYS_CFG. Same value EmacDxe writes:
+            //   EPHY_SHUTDOWN(16) | EPIT/RGMII(2) | ETCS = 2 (internal GMII/RGMII clk) | ETXDC = 7 << 10
+            OperationRegion (SYSC, SystemMemory, 0x03000030, 0x04)
+            Field (SYSC, DWordAcc, NoLock, Preserve)
+            {
+                ECLK,   32
+            }
+
+            // PIO bank I (PI0..PI16)
+            OperationRegion (PIOI, SystemMemory, 0x0300B120, 0x24)
+            Field (PIOI, DWordAcc, NoLock, Preserve)
+            {
+                PCF0,   32,         // +0x00 PI0..PI7   function, 4 bits per pin
+                PCF1,   32,         // +0x04 PI8..PI15
+                PCF2,   32,         // +0x08 PI16..
+                PCF3,   32,         // +0x0C
+                Offset (0x14),
+                PDR0,   32,         // +0x14 drive strength PI0..PI15, 2 bits per pin
+                PDR1,   32          // +0x18 drive strength PI16..
+            }
+
+            Method (_STA, 0, NotSerialized)
+            {
+                // ON only when the clock is gated on and reset is released.
+                If (LAnd (EGAT, ERST))
+                {
+                    Return (One)
+                }
+
+                Return (Zero)
+            }
+
+            Method (_ON, 0, Serialized)
+            {
+                // Same order as EmacDxeEntry: reset assert, gate off, gate on, reset release
+                Store (Zero, ERST)
+                Store (Zero, EGAT)
+                Stall (10)
+                Store (One, EGAT)
+                Store (One, ERST)
+
+                // syscon: RGMII, TX delay chain 7
+                Store (0x00011C06, ECLK)
+
+                // Pin mux function 2 on PI0..PI16, skipping PI6 (EmacConfigurePins)
+                Store (Or (And (PCF0, 0x0F000000), 0x20222222), PCF0)
+                Store (0x22222222, PCF1)
+                Store (Or (And (PCF2, 0xFFFFFFF0), 0x00000002), PCF2)
+
+                // Drive level 3 on the same pins
+                Store (Or (PDR0, 0xFFFFCFFF), PDR0)
+                Store (Or (PDR1, 0x00000003), PDR1)
+
+                // Let clocks and the PHY interface settle
+                Sleep (10)
+            }
+
+            Method (_OFF, 0, Serialized)
+            {
+                Store (Zero, ERST)
+                Store (Zero, EGAT)
+            }
+        }
+
+        Device (EMAC)
+        {
+            Name (_HID, "AWEM0001")
+            Name (_UID, Zero)
+            Name (_CCA, Zero)       // non-coherent DMA, like the other devices here
+
+            Method (_STA, 0, NotSerialized)
+            {
+                Return (0x0F)
+            }
+
+            Name (_PR0, Package () { EPWR })
+
+            Name (_CRS, ResourceTemplate ()
+            {
+                // 0: EMAC0 registers (also used by U-Boot/Linux as 0x05020000, size 0x10000)
+                Memory32Fixed (ReadWrite, 0x05020000, 0x00010000)
+                // 1: GIC SPI 14 -> GSIV 46 (SPI + 32, same mapping as EHC1 SPI 28 -> 60, SDC0 SPI 35 -> 67)
+                Interrupt (ResourceConsumer, Level, ActiveHigh, Exclusive) { 46 }
+                // 2: SID eFuse words, read-only, source of the MAC address (EMAC_SID_BASE)
+                Memory32Fixed (ReadOnly, 0x03006200, 0x00000010)
+            })
+        }
+    }
+}

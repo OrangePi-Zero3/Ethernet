@@ -1,0 +1,92 @@
+; Orange Pi Zero3 (Allwinner H616/H618) EMAC0 Gigabit Ethernet - NetAdapterCx (KMDF)
+; Modeled on bcmgenet.inx from raspberrypi/windows-drivers (MIT).
+; Hardware ID matches the "AWEM0001" device added to the DSDT (acpi/DSDT_minimal.dsl).
+
+[Version]
+Signature               = "$Windows NT$"
+Class                   = Net
+ClassGUID               = {4d36e972-e325-11ce-bfc1-08002be10318}
+Provider                = %ProviderString%
+CatalogFile             = zero3emac.cat
+PnpLockdown             = 1
+
+[ControlFlags]
+ExcludeFromSelect       = ACPI\AWEM0001
+
+[SourceDisksNames]
+1                       = %DiskDescription%
+
+[SourceDisksFiles]
+zero3emac.sys           = 1
+
+[DestinationDirs]
+DefaultDestDir          = 13
+
+[Manufacturer]
+%Vendor%                = Zero3, NT$ARCH$.10.0...19536
+
+[Zero3.NT$ARCH$.10.0...19536]
+%Zero3Emac.DeviceDesc%  = Zero3Emac_Install, ACPI\AWEM0001
+
+[Zero3Emac_Install.NT]
+FeatureScore            = 0xFE
+Characteristics         = 0x84          ; NCF_HAS_UI | NCF_PHYSICAL
+BusType                 = 15            ; PNPBus
+*IfType                 = 6             ; IF_TYPE_ETHERNET_CSMACD
+*MediaType              = 0             ; NdisMedium802_3
+*PhysicalMediaType      = 14            ; NdisPhysicalMedium802_3
+*IfConnectorPresent     = 1
+*ConnectionType         = 1             ; NET_IF_CONNECTION_DEDICATED
+*DirectionType          = 0             ; NET_IF_DIRECTION_SENDRECEIVE
+*AccessType             = 2             ; NET_IF_ACCESS_BROADCAST
+*HardwareLoopback       = 0
+CopyFiles               = Zero3Emac.Copy
+AddReg                  = Zero3Emac.Ndi.AddReg
+AddReg                  = NetworkAddress.Kw.AddReg
+AddReg                  = PhyAddress.Kw.AddReg
+
+[Zero3Emac_Install.NT.Services]
+AddService              = %Zero3Emac.SvcName%, 2, Zero3Emac.AddService
+
+[Zero3Emac.Copy]
+zero3emac.sys
+
+[Zero3Emac.Ndi.AddReg]
+HKR, Ndi, Service, 0, %Zero3Emac.SvcName%
+HKR, Ndi\Interfaces, UpperRange, 0, "ndis5"
+HKR, Ndi\Interfaces, LowerRange, 0, "ethernet"
+
+[Zero3Emac.AddService]
+DisplayName             = %Zero3Emac.SvcDesc%
+ServiceType             = 1             ; SERVICE_KERNEL_DRIVER
+StartType               = 3             ; SERVICE_DEMAND_START
+ErrorControl            = 1             ; SERVICE_ERROR_NORMAL
+ServiceBinary           = %13%\zero3emac.sys
+
+[NetworkAddress.Kw.AddReg]
+HKR, Ndi\params\NetworkAddress, ParamDesc, 0, %NetworkAddress%
+HKR, Ndi\params\NetworkAddress, type,      0, "edit"
+HKR, Ndi\params\NetworkAddress, default,   0, ""
+HKR, Ndi\params\NetworkAddress, LimitText, 0, "12"
+HKR, Ndi\params\NetworkAddress, UpperCase, 0, "1"
+HKR, Ndi\params\NetworkAddress, Optional,  0, "1"
+
+; Read by the driver with NetConfigurationQueryUlong (default 1 = EMAC_PHY_ADDRESS in EmacDxe.h)
+[PhyAddress.Kw.AddReg]
+HKR, Ndi\params\PhyAddress, ParamDesc, 0, %PhyAddress%
+HKR, Ndi\params\PhyAddress, type,      0, "int"
+HKR, Ndi\params\PhyAddress, default,   0, "1"
+HKR, Ndi\params\PhyAddress, min,       0, "0"
+HKR, Ndi\params\PhyAddress, max,       0, "31"
+HKR, Ndi\params\PhyAddress, step,      0, "1"
+HKR, Ndi\params\PhyAddress, Optional,  0, "1"
+
+[Strings]
+ProviderString          = "Open Source"
+Vendor                  = "Orange Pi Zero3 community"
+DiskDescription         = "Zero3 EMAC Driver Disk 1"
+Zero3Emac.DeviceDesc    = "Allwinner H616/H618 EMAC Gigabit Ethernet (Orange Pi Zero3)"
+Zero3Emac.SvcName       = "zero3emac"
+Zero3Emac.SvcDesc       = "Orange Pi Zero3 EMAC Driver Service"
+NetworkAddress          = "Network Address"
+PhyAddress              = "PHY MDIO Address"

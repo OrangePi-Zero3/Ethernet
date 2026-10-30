@@ -1,0 +1,22 @@
+\xef\xbb\xbf
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "zero3emac", "zero3emac.vcxproj", "{7C0B3D2E-5B6F-4A57-9D3C-2F5E9A1B6D10}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|ARM64 = Debug|ARM64
+		Release|ARM64 = Release|ARM64
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{7C0B3D2E-5B6F-4A57-9D3C-2F5E9A1B6D10}.Debug|ARM64.ActiveCfg = Debug|ARM64
+		{7C0B3D2E-5B6F-4A57-9D3C-2F5E9A1B6D10}.Debug|ARM64.Build.0 = Debug|ARM64
+		{7C0B3D2E-5B6F-4A57-9D3C-2F5E9A1B6D10}.Release|ARM64.ActiveCfg = Release|ARM64
+		{7C0B3D2E-5B6F-4A57-9D3C-2F5E9A1B6D10}.Release|ARM64.Build.0 = Release|ARM64
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal
